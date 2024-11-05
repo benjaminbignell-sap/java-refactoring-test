@@ -3,13 +3,11 @@ package com.sap.refactoring;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class JavaRefactoringTestApplicationTests
-{
+@SpringBootTest(classes = JavaRefactoringTestApplication.class)
+class JavaRefactoringTestApplicationTests {
 
-	@Test
-	void contextLoads()
-	{
-	}
-
+    @Test
+    void contextLoads() {
+        // no-op
+    }
 }

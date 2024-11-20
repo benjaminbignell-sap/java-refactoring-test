@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'com.sap.refactoring'
-version = '0.0.1-SNAPSHOT'
+version = '0.0.2-SNAPSHOT'
 
 java {
     toolchain {
@@ -26,7 +26,10 @@ repositories {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'com.h2database:h2'
+    implementation 'org.springframework.boot:spring-boot-docker-compose'
+    implementation 'org.postgresql:postgresql:42.7.3'
+    implementation 'org.apache.commons:commons-lang3:3.14.0'
+    implementation 'org.liquibase:liquibase-core:4.29.0'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

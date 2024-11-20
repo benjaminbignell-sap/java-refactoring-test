@@ -2,12 +2,13 @@ package com.sap.refactoring.users;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
 
 import com.sap.refactoring.repository.UserRepository;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.platform.commons.function.Try;
@@ -68,17 +69,16 @@ class UserDaoUnitTest {
     void deleteUserTest() {
         // ensure assertions work for parameter validation
         Try.call(() -> doDelete(null)).ifSuccess(t -> fail("A null user should throw an assertion"));
-        Try.call(() -> doDelete(new User()))
-                .ifSuccess(t -> fail("A user without email address should throw an assertion"));
 
         // delete a user
         final var user = createUser("fake", List.of());
-        userDao.deleteUser(user);
-        Mockito.verify(userRepository, Mockito.times(1)).deleteById(user.getEmail());
+        Mockito.when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        userDao.deleteUser(1L);
+        Mockito.verify(userRepository, Mockito.times(1)).deleteById(user.getId());
     }
 
     @Test
-    void getUsersTest() {
+    void getUsersTestByEmail() {
         // find all users
         Mockito.when(userRepository.findAll()).thenReturn(List.of(new User(), new User()));
         var users = userDao.getUsers(null);
@@ -96,14 +96,14 @@ class UserDaoUnitTest {
     }
 
     @Test
-    void getUserTest() {
+    void getUserByEmailTest() {
         // ensure assertions work for parameter validation
-        Try.call(() -> userDao.getUser(null)).ifSuccess(t -> fail("A null email should throw an assertion"));
-        Try.call(() -> userDao.getUser("")).ifSuccess(t -> fail("A blank email should throw an assertion"));
+        Try.call(() -> userDao.getUserByEmail(null)).ifSuccess(t -> fail("A null email should throw an assertion"));
+        Try.call(() -> userDao.getUserByEmail("")).ifSuccess(t -> fail("A blank email should throw an assertion"));
 
         // get user by id
-        userDao.getUser("bob@mail.com"); // return not important
-        Mockito.verify(userRepository, Mockito.times(1)).findById("bob@mail.com");
+        userDao.getUserByEmail("bob@mail.com"); // return not important
+        Mockito.verify(userRepository, Mockito.times(1)).findByEmail("bob@mail.com");
     }
 
     @Test
@@ -129,33 +129,31 @@ class UserDaoUnitTest {
         // update a user to have a different name and list of roles
         final var originalUser = createUser("bob", List.of("role1", "role2"));
         originalUser.setName("John");
-
         final var user = createUser("bob", List.of("role1", "role2", "role3"));
-        Mockito.when(userRepository.findById(user.getEmail())).thenReturn(java.util.Optional.of(originalUser));
-        Mockito.when(userRepository.save(originalUser)).thenReturn(user);
+        Mockito.when(userRepository.save(user)).thenReturn(user);
 
         final var updatedUser = userDao.updateUser(user);
-        assertNotNull(updatedUser);
-        assertEquals(updatedUser, user);
-        Mockito.verify(userRepository, Mockito.times(1)).findById(user.getEmail());
+        assertTrue(updatedUser.isPresent());
+        assertEquals(updatedUser.get(), user);
         Mockito.verify(userRepository, Mockito.times(1)).save(user);
 
         // attempt to update a user that doesn't exist
         final var invalidUser = createUser("notfound", List.of("role1", "role2"));
+        Mockito.when(userRepository.save(invalidUser)).thenReturn(invalidUser);
         final var notUpdatedUser = userDao.updateUser(invalidUser);
-        assertNull(notUpdatedUser);
-        Mockito.verify(userRepository, Mockito.times(1)).findById(invalidUser.getEmail());
-        Mockito.verify(userRepository, Mockito.times(0)).save(invalidUser);
+        assertTrue(notUpdatedUser.isPresent());
+        Mockito.verify(userRepository, Mockito.times(1)).save(invalidUser);
     }
 
 
-    Void doDelete(final User user) {
-        userDao.deleteUser(user);
+    Void doDelete(final Long id) {
+        userDao.deleteUser(id);
         return null;
     }
 
     User createUser(final String name, final List<String> roles) {
         final var user = new User();
+        user.setId(1L);
         user.setName(name);
         user.setEmail(name + "@integration.com");
         user.setRoles(roles);

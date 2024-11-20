@@ -2,8 +2,8 @@ package com.sap.refactoring.users;
 
 import com.sap.refactoring.repository.UserRepository;
 import jakarta.annotation.Nonnull;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.StreamSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +24,7 @@ public class UserDao {
     private static final String ERR_USER_NOT_NULL = "The user cannot be null";
     private static final String ERR_EMAIL_MUST_BE_PROVIDED = "The email address must be provided";
     private static final String ERR_NUMBER_OF_ROLES = "At least one user role must be provided";
+    private static final String ERR_ID_NOT_NULL = "The id must not be null";
 
     private final UserRepository userRepository;
 
@@ -75,32 +76,32 @@ public class UserDao {
      * Gets a user by email.
      *
      * @param email The email
-     * @return The user, or null if none is found for that email
+     * @return An optional user
      */
-    public User getUser(@Nonnull final String email) {
+    public Optional<User> getUserByEmail(@Nonnull final String email) {
         Assert.hasText(email, ERR_EMAIL_MUST_BE_PROVIDED);
-        try {
-            return userRepository.findById(email).orElse(null);
-        } catch (final Exception ex) {
-            LOG.error("Failed to get user with email {}", email, ex);
-            return null;
-        }
+        return userRepository.findByEmail(email);
+    }
+
+    /**
+     * Gets a user by id.
+     *
+     * @param id The id
+     * @return An optional user
+     */
+    public Optional<User> getUserById(@Nonnull final Long id) {
+        Assert.notNull(id, ERR_ID_NOT_NULL);
+        return userRepository.findById(id);
     }
 
     /**
      * Deletes a user from the database.
      *
-     * @param userToDelete A non-null user with an email address
+     * @param id The id
      */
-    public void deleteUser(@Nonnull final User userToDelete) {
-        Assert.notNull(userToDelete, ERR_USER_NOT_NULL);
-        Assert.hasText(userToDelete.getEmail(), ERR_EMAIL_MUST_BE_PROVIDED);
-
-        try {
-            userRepository.deleteById(userToDelete.getEmail());
-        } catch (final Exception ex) {
-            LOG.error("Failed to delete user with email {}", userToDelete.getEmail(), ex);
-        }
+    public void deleteUser(@Nonnull final Long id) {
+        Assert.notNull(id, ERR_ID_NOT_NULL);
+        userRepository.deleteById(id);
     }
 
     /**
@@ -108,21 +109,11 @@ public class UserDao {
      *
      * @param userToUpdate The user to update
      */
-    public User updateUser(@Nonnull final User userToUpdate) {
+    public Optional<User> updateUser(@Nonnull final User userToUpdate) {
         Assert.notNull(userToUpdate, ERR_USER_NOT_NULL);
         Assert.hasText(userToUpdate.getEmail(), ERR_EMAIL_MUST_BE_PROVIDED);
         Assert.isTrue(hasRoles(userToUpdate), ERR_NUMBER_OF_ROLES);
-
-        try {
-            return userRepository.findById(userToUpdate.getEmail()).map(user -> {
-                user.setName(userToUpdate.getName());
-                user.setRoles(new ArrayList<>(userToUpdate.getRoles()));
-                return userRepository.save(user);
-            }).orElseThrow();
-        } catch (final Exception ex) {
-            LOG.error("Failed to update user with email {}", userToUpdate.getEmail(), ex);
-            return null;
-        }
+        return Optional.of(userRepository.save(userToUpdate));
     }
 
     /**
@@ -134,13 +125,7 @@ public class UserDao {
     @Nonnull
     public List<User> findUsers(@Nonnull final String name) {
         Assert.hasText(name, "The name must be provided");
-
-        try {
-            return userRepository.findByName(name);
-        } catch (final Exception ex) {
-            LOG.error("An error occurred finding user with name {}", name, ex);
-            return List.of();
-        }
+        return userRepository.findByName(name);
     }
 
     static boolean hasRoles(@Nonnull final User user) {

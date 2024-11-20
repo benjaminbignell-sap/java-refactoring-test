@@ -3,6 +3,7 @@ package com.sap.refactoring.users;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.util.List;
@@ -21,6 +22,8 @@ import lombok.Setter;
 public class User {
 
     @Id
+    @GeneratedValue
+    private Long id;
     @Column(unique = true)
     private String email;
     private String name;

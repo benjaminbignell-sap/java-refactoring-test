@@ -3,6 +3,7 @@ package com.sap.refactoring.repository;
 import com.sap.refactoring.users.User;
 import jakarta.annotation.Nonnull;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
@@ -10,7 +11,9 @@ import org.springframework.stereotype.Repository;
  * A {@link CrudRepository} for {@link User} entities.
  */
 @Repository
-public interface UserRepository extends CrudRepository<User, String> {
+public interface UserRepository extends CrudRepository<User, Long> {
+
+    Optional<User> findByEmail(@Nonnull final String email);
 
     /**
      * Find users by their name.

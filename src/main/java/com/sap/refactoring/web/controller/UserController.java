@@ -1,7 +1,7 @@
 package com.sap.refactoring.web.controller;
 
-import com.sap.refactoring.users.User;
-import com.sap.refactoring.users.UserDao;
+import com.sap.refactoring.data.UserData;
+import com.sap.refactoring.service.UserService;
 import java.net.URI;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,29 +22,26 @@ import org.springframework.web.bind.annotation.RequestParam;
  * <ul><strong>Operations:</strong>
  *     <li>GET /users -> Get all users</li>
  *     <li>GET /users?name=value -> Get all users where name equals {@code value}</li>
- *     <li>GET /users/{email} -> Get the user with the given email address</li>
- *     <li>POST /users -> Create a new user, pass a {@link User} in the body</li>
- *     <li>PUT /users/{email} -> Update user identified by {email}, pass a {@link User} in the body</li>
- *     <li>DELETE /user/{email} -> Delete user identified by {email}</li>
+ *     <li>GET /users/id -> Get the user with the given id</li>
+ *     <li>POST /users -> Create a new user, pass a {@link UserData} in the body</li>
+ *     <li>PUT /users/{id} -> Update user identified by {id}, pass a {@link UserData} in the body</li>
+ *     <li>DELETE /user/{id} -> Delete user identified by {id}</li>
  * </ul>
- * Ideally, this controller should be returning DTOs instead of the User entity. But for this simple example, it's
- * probably acceptable. (Also, we don't have an internal identifier like a Commerce PK that should probably stay hidden
- * from the consumers.)
  */
 @Controller
 @RequestMapping("/users")
 public class UserController {
 
-    private final UserDao userDao;
+    private final UserService userService;
 
     /**
      * Constructor.
      *
-     * @param userDao The user DAO
+     * @param userService The user service
      */
     @Autowired
-    public UserController(final UserDao userDao) {
-        this.userDao = userDao;
+    public UserController(final UserService userService) {
+        this.userService = userService;
     }
 
     /**
@@ -54,19 +51,19 @@ public class UserController {
      * @return A list of users
      */
     @GetMapping
-    public ResponseEntity<List<User>> getUsers(@RequestParam(value = "name", required = false) String name) {
-        return ResponseEntity.ok(userDao.getUsers(name));
+    public ResponseEntity<List<UserData>> getUsers(@RequestParam(value = "name", required = false) final String name) {
+        return ResponseEntity.ok(userService.getUsers(name));
     }
 
     /**
-     * Gets a user by email.
+     * Gets a user by id.
      *
-     * @param email The email
+     * @param id The id
      * @return The user, or a 404 if none is found for that email
      */
-    @GetMapping("/{email}")
-    public ResponseEntity<User> getUser(@PathVariable(value = "email") final String email) {
-        final var user = userDao.getUser(email);
+    @GetMapping("/{id}")
+    public ResponseEntity<UserData> getUser(@PathVariable(value = "id") final Long id) {
+        final var user = userService.getUser(id);
         return user != null
                 ? ResponseEntity.ok(user)
                 : ResponseEntity.notFound().build();
@@ -79,22 +76,8 @@ public class UserController {
      * @return The new user, or a 409 if a user with that email already exists
      */
     @PostMapping
-    public ResponseEntity<User> addUser(@RequestBody final User user) {
-        /*
-        I'm not sure how I feel about this ... it seems off somehow. Maybe the validation should be done in the DAO
-        (or in the non-existent UserService). The big issue is that the createUser operation could happen many times
-        (it's transactional in the repository, so that's OK) but the "last" request would win and set its values.
-
-        My intent was to never call createUser() (and by extension, the repository's save() method) for an existing
-        user. I could put @Transactional here on the controller method, but that's the wrong place, and it doesn't
-        necessarily guarantee anything.
-        */
-        final var existingUser = userDao.getUser(user.getEmail());
-        if (existingUser != null) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
-        }
-
-        final var createdUser = userDao.createUser(user);
+    public ResponseEntity<UserData> addUser(@RequestBody final UserData user) {
+        final var createdUser = userService.createUser(user);
         return ResponseEntity
                 .created(URI.create("/users/" + user.getEmail()))
                 .body(createdUser);
@@ -103,37 +86,37 @@ public class UserController {
     /**
      * Updates an existing user.
      *
-     * @param email The user email
-     * @param user  The user data
-     * @return The updated user with a 201, or a 404 if no user exists for that email. If the email in the path and the
+     * @param id       The user id
+     * @param userData The user data
+     * @return The updated user with a 201, or a 404 if no user exists for that id. If the email in the path and the
      * email in the user payload do not match, a 400 is returned.
      */
-    @PutMapping("/{email}")
-    public ResponseEntity<User> updateUser(@PathVariable(name = "email") final String email,
-            @RequestBody final User user) {
+    @PutMapping("/{id}")
+    public ResponseEntity<UserData> updateUser(@PathVariable(name = "id") final Long id,
+            @RequestBody final UserData userData) {
 
-        if (!email.equals(user.getEmail())) {
-            return ResponseEntity.badRequest().build();
+        // the id in the path and the id in the payload must match
+        if (!id.equals(userData.getId())) {
+            throw new IllegalArgumentException("The id in the path and the payload do not match");
         }
 
-        final var updated = userDao.updateUser(user);
+        // update the user
+        final var updated = userService.updateUser(userData);
         return updated != null
                 ? ResponseEntity.status(HttpStatus.ACCEPTED).body(updated)
                 : ResponseEntity.notFound().build();
     }
 
     /**
-     * Deletes a user for the given email.
+     * Deletes a user for the given id.
      *
-     * @param email The email address
+     * @param id The user id
      * @return Returns a 204 in all scenarios; we do not indicate if there was actually any user deletion
      */
-    @DeleteMapping("/{email}")
-    public ResponseEntity<Void> deleteUser(@PathVariable(value = "email") final String email) {
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable(value = "id") final Long id) {
 
-        final var userToDelete = new User();
-        userToDelete.setEmail(email);
-        userDao.deleteUser(userToDelete);
+        userService.deleteUser(id);
         return ResponseEntity.noContent().build();
     }
 }
